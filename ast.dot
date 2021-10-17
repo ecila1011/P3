@@ -1,0 +1,25 @@
+digraph AST {
+1 [shape=box, label="VarDecl name='i'"];
+5 [shape=box, label="Literal value=1"];
+8 [shape=box, label="Location name='i'"];
+9 [shape=box, label="Literal value=true"];
+7 [shape=box, label="Assignment"];
+7 -> 8;
+7 -> 9;
+6 [shape=box, label="Block\nsymbolTable: (empty)"];
+6 -> 7;
+4 [shape=box, label="Conditional"];
+4 -> 5;
+4 -> 6;
+11 [shape=box, label="Literal value=0"];
+10 [shape=box, label="Return"];
+10 -> 11;
+3 [shape=box, label="Block\nsymbolTable: (empty)"];
+3 -> 4;
+3 -> 10;
+2 [shape=box, label="FuncDecl name='main'\nsymbolTable: (empty)"];
+2 -> 3;
+0 [shape=box, label="Program\nsymbolTable: \n  print_int : (int) -> void\n  print_bool : (bool) -> void\n  print_str : (str) -> void\n  main : () -> int\n  i : bool"];
+0 -> 1;
+0 -> 2;
+}

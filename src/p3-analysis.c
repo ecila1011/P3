@@ -116,6 +116,28 @@ void AnalysisVisitor_check_main (NodeVisitor* visitor, ASTNode* node) {
     }
 }
 
+/**
+ * @brief check and make sure that assignment type matches declaration type (Alice added this)
+ */
+void AnalysisVisitor_check_type (NodeVisitor* visitor, ASTNode* node) {
+    // initialize the location and value of the assignment for easier handling
+    ASTNode* loc = node->assignment.location;
+    ASTNode* val = node->assignment.value;
+
+    if (val->type != LITERAL){
+        // do something ()
+    }
+
+    Symbol *sym = lookup_symbol(node, loc->location.name);
+
+    if (sym == NULL) {
+        ErrorList_printf(ERROR_LIST, "Invalid assignment operation on line %d", node->source_line);
+    } else if (sym->type != val->literal.type) {
+        ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected '%s' to be of type '%s', but was '%s'", node->source_line, loc->location.name, DecafType_to_string(sym->type), DecafType_to_string(val->literal.type));
+    }
+}
+
+
 ErrorList* analyze (ASTNode* tree)
 {
     /* allocate analysis structures */
@@ -127,6 +149,7 @@ ErrorList* analyze (ASTNode* tree)
     v->previsit_program = &AnalysisVisitor_check_main;
     v->previsit_vardecl = &AnalysisVisitor_check_vardecl;
     v->previsit_location = &AnalysisVisitor_check_location;
+    v->previsit_assignment = &AnalysisVisitor_check_type;
 
     /* perform analysis, save error list, clean up, and return errors */
     NodeVisitor_traverse(v, tree);

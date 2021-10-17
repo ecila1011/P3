@@ -140,6 +140,9 @@ int main(int argc, char** argv)
         fclose(graph_file);
     }
 
+    /* Added from P# doc to print image */
+    system("dot -Tpng -o ast.png ast.dot");
+
     /* clean up */
     ASTNode_free(tree);
     ErrorList_free(errors);

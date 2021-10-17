@@ -373,7 +373,7 @@ ASTNode* LiteralNode_new_bool (bool value, int source_line)
     node->literal.type = BOOL;
     node->literal.boolean = value;
     return node;
-}
+} 
 
 ASTNode* LiteralNode_new_string (const char* value, int source_line)
 {

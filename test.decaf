@@ -1,11 +1,7 @@
-// test invalid void declaration
-void a;
-void b[2];
-
-int c[3];
-
-// test for invalid location
-def int sum() {
-    c[4] = 2;
-    return 4;
+bool i;
+def int main () { 
+    if (1) { 
+        i = true;
+    }
+    return 0;
 }

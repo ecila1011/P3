@@ -1,0 +1,6 @@
+// tests to pass
+bool i; 
+def int main () { 
+    i = 2 + 3; 
+    return 0;
+}

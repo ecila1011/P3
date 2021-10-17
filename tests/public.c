@@ -34,6 +34,9 @@ TEST_INVALID(B_mismatched_parameters, "def int main() { foo(true, true); return 
                                       "def void foo(int i, bool b) { return; } ")
 TEST_INVALID(A_invalid_main_var,      "int main; def int foo(int a) { return 0; }")
 
+// Tests we added
+TEST_INVALID(type_mismatch_expression, "bool i; def int main () { i = 2 + 3; return 0 }")
+
 #endif
 
 /**
@@ -60,6 +63,9 @@ void public_tests (Suite *s)
     TEST(B_mismatched_parameters);
 
     TEST(A_invalid_main_var);
+
+    // added
+    TEST(type_mismatch_expression);
 
     suite_add_tcase (s, tc);
 }
