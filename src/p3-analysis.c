@@ -119,21 +119,118 @@ void AnalysisVisitor_check_main (NodeVisitor* visitor, ASTNode* node) {
 /**
  * @brief check and make sure that assignment type matches declaration type (Alice added this)
  */
-void AnalysisVisitor_check_type (NodeVisitor* visitor, ASTNode* node) {
+void AnalysisVisitor_check_assignment_type (NodeVisitor* visitor, ASTNode* node) 
+{
     // initialize the location and value of the assignment for easier handling
     ASTNode* loc = node->assignment.location;
     ASTNode* val = node->assignment.value;
 
-    if (val->type != LITERAL){
-        // do something ()
-    }
-
+    // find the symbol declaration for the location name
     Symbol *sym = lookup_symbol(node, loc->location.name);
 
-    if (sym == NULL) {
+    if (sym == NULL) // error
+    {
         ErrorList_printf(ERROR_LIST, "Invalid assignment operation on line %d", node->source_line);
-    } else if (sym->type != val->literal.type) {
-        ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected '%s' to be of type '%s', but was '%s'", node->source_line, loc->location.name, DecafType_to_string(sym->type), DecafType_to_string(val->literal.type));
+    } 
+
+    // check what the value type is, then check it with the symbol expected type
+    if (val->type == BINARYOP) 
+    {
+        // NEEDS TO BE COMPLETED
+        // mainly am confused as to if it needs a loop or not
+        // also unsure if this would technically be handled somewhere else.
+        // like parsing expressions
+    } 
+    else if (val->type == LOCATION) 
+    {
+        // look up the type of the location
+        Symbol *valSym = lookup_symbol(val, val->location.name);
+
+        // check for error and print error to errorlist
+        if (sym->type != valSym->type) 
+        {
+            ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected '%s' to be of type '%s', but was '%s'", node->source_line, loc->location.name, DecafType_to_string(sym->type), DecafType_to_string(valSym->type));
+        }
+    } 
+    else if (val->type == FUNCCALL) 
+    {
+        // look up the type of the funccall
+        Symbol *funcSym = lookup_symbol(val, val->funccall.name);
+        
+        // check for error and print error to errorlist
+        if (sym->type != funcSym->type) 
+        {
+            ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected '%s' to be of type '%s', but was '%s'", node->source_line, loc->location.name, DecafType_to_string(sym->type), DecafType_to_string(funcSym->type));
+        }
+    } 
+    else if (val->type == LITERAL) 
+    {
+        // check for error and print error to errorlist
+        if (sym->type != val->literal.type) 
+        {
+            ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected '%s' to be of type '%s', but was '%s'", node->source_line, loc->location.name, DecafType_to_string(sym->type), DecafType_to_string(val->literal.type));
+        }
+    } 
+    else 
+    {
+        // something went wrong
+        // unsure if we need this or not
+        ErrorList_printf(ERROR_LIST, "Invalid assignment operation on line %d", node->source_line);
+    }
+
+}
+
+/**
+ * @brief Check to make sure conditional type is a bool (Alice added this)
+ * I think that this method can be condensed
+ */
+void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node) {
+    // initialize the location and value of the assignment for easier handling
+    ASTNode* val = node->conditional.condition;
+
+    // check what the value type is, then check it with the symbol expected type
+    if (val->type == BINARYOP) 
+    {
+        // NEEDS TO BE COMPLETED
+        // mainly am confused as to if it needs a loop or not
+        // also unsure if this would technically be handled somewhere else.
+        // like parsing expressions
+    } 
+    else if (val->type == LOCATION) 
+    {
+        // look up the type of the location
+        Symbol *valSym = lookup_symbol(val, val->location.name);
+
+        // check for error and print error to errorlist
+        if (valSym->type != BOOL) 
+        {
+            ErrorList_printf(ERROR_LIST, "Invalid condition on line %d. Expected '%s' to be of type 'BOOL', but was '%s'", node->source_line, node->conditional.condition, DecafType_to_string(valSym->type));
+        }
+    } 
+    else if (val->type == FUNCCALL) 
+    {
+        // look up the type of the funccall
+        Symbol *funcSym = lookup_symbol(val, val->funccall.name);
+        
+        // check for error and print error to errorlist
+        if (funcSym->type != BOOL) 
+        {
+             ErrorList_printf(ERROR_LIST, "Invalid condition on line %d. Expected '%s' to be of type 'BOOL', but was '%s'", node->source_line, node->conditional.condition, DecafType_to_string(funcSym->type));
+        }
+    } 
+    else if (val->type == LITERAL) 
+    {
+        // check for error and print error to errorlist
+        if (val->literal.type != BOOL) 
+        {
+             ErrorList_printf(ERROR_LIST, "Invalid condition on line %d. Expected '%s' to be of type 'BOOL', but was '%s'", node->source_line, node->conditional.condition, DecafType_to_string(val->literal.type));
+        }
+    } 
+    else 
+    {
+        // something went wrong
+        // unsure if we need this or not
+        ErrorList_printf(ERROR_LIST, "Invalid assignment operation on line %d", node->source_line);
     }
 }
 
@@ -149,7 +246,8 @@ ErrorList* analyze (ASTNode* tree)
     v->previsit_program = &AnalysisVisitor_check_main;
     v->previsit_vardecl = &AnalysisVisitor_check_vardecl;
     v->previsit_location = &AnalysisVisitor_check_location;
-    v->previsit_assignment = &AnalysisVisitor_check_type;
+    v->previsit_assignment = &AnalysisVisitor_check_assignment_type;
+    v->previsit_conditional = &AnalysisVisitor_check_conditional_type;
 
     /* perform analysis, save error list, clean up, and return errors */
     NodeVisitor_traverse(v, tree);

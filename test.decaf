@@ -1,7 +1,12 @@
 bool i;
+int a;
+
 def int main () { 
-    if (1) { 
-        i = true;
-    }
+    a = 2;
+    i = foo();
     return 0;
+}
+
+def int foo() {
+    return 2;
 }
