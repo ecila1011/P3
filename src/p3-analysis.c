@@ -103,7 +103,34 @@ void AnalysisVisitor_check_vardecl (NodeVisitor* visitor, ASTNode* node) {
  * @brief Check to make sure that the location name is valid (we added this)
  */
 void AnalysisVisitor_check_location (NodeVisitor* visitor, ASTNode* node) {
-    lookup_symbol_with_reporting(visitor, node, node->location.name);
+
+    // makes sure that the location is valid (has been declared)
+    if (node->location.index == NULL) 
+    { // if location is not an array
+        lookup_symbol_with_reporting(visitor, node, node->location.name);
+    }
+    else if (node->location.index != NULL)
+    { // location is an array
+        Symbol* sym = lookup_symbol(node, node->location.name);
+
+        ASTNode* loc = node->location.index;
+        int index = loc->literal.integer;
+        //ErrorList_printf(ERROR_LIST, "Index is %d", index);
+        // for some reason this is not working for negative array accesses. 
+        // the above error list thing is for deubgging
+        // the first part of the if statement below is just never being run because all negtive array
+        // accesses are registered as a 0 and i dont know why. has to be from somewhere else
+
+        // if the index is negative, print to errorlist
+        if (index < 0) // this currently never runs because index will always be >= 0
+        {
+            ErrorList_printf(ERROR_LIST, "Array size '%s[%d]' on line %d is invalid", node->location.name, index, node->source_line);
+        }
+        else if (index >= sym->length) // if the index is greater than the array length
+        {
+            ErrorList_printf(ERROR_LIST, "Array access '%s[%d]' on line %d is invalid.", node->location.name, index, node->source_line);
+        }
+    }
 }
 
 /**

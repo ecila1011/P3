@@ -1,12 +1,6 @@
-bool i;
-int a;
+int a[3];
 
 def int main () { 
-    a = 2;
-    i = foo();
+    a[4] = 2;
     return 0;
-}
-
-def int foo() {
-    return 2;
 }

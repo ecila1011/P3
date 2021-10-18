@@ -1,6 +1,31 @@
 // tests to pass
+
+// invalid type assignment
 bool i; 
 def int main () { 
     i = 2 + 3; 
+    return 0;
+}
+
+// negative array access
+int a[2];
+
+def int main () { 
+    a[-1] = 0;
+    return 0;
+}
+
+// negative array declaration
+int a[-1];
+
+def int main () { 
+    return 0;
+}
+
+// out of bounds array access
+int a[2];
+
+def int main () { 
+    a[4] = 0;
     return 0;
 }
