@@ -1,6 +1,7 @@
-int a[3];
-
-def int main () { 
-    a[4] = 2;
-    return 0;
+def int main() 
+{ 
+    if (1) 
+    { 
+        return 0; 
+    } 
 }
