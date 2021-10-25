@@ -16,7 +16,17 @@ typedef struct AnalysisData
      */
     ErrorList* errors;
 
-    /* BOILERPLATE: TODO: add any new desired state information (and clean it up in AnalysisData_free) */
+    /******************* State Information that we added *******************/
+    
+    /**
+     * @brief current function that we are in
+     */
+    char* current_func;
+
+    /**
+     * @brief true if we are in a while loop, false otherwise
+     */
+    bool in_while;
 
 } AnalysisData;
 
@@ -30,6 +40,8 @@ AnalysisData* AnalysisData_new ()
     AnalysisData* data = (AnalysisData*)calloc(1, sizeof(AnalysisData));
     CHECK_MALLOC_PTR(data);
     data->errors = ErrorList_new();
+    data->current_func = NULL;
+    data->in_while = false;
     return data;
 }
 
@@ -42,6 +54,7 @@ void AnalysisData_free (AnalysisData* data)
 {
     /* free everything in data that is allocated on the heap except the error
      * list; it needs to be returned after the analysis is complete */
+    free(data->current_func);
 
     /* free "data" itself */
     free(data);
@@ -58,6 +71,18 @@ void AnalysisData_free (AnalysisData* data)
  * @ref AnalysisVisitor data structure
  */
 #define ERROR_LIST (((AnalysisData*)visitor->data)->errors)
+
+/**
+ * @brief Macro for more convenient access to the current function inside a
+ * @ref AnalysisVisitor data structure
+ */
+#define CURR_FUNC (((AnalysisData*)visitor->data)->current_func)
+
+/**
+ * @brief Macro for more convenient access to the bool for in_while inside a
+ * @ref AnalysisVisitor data structure
+ */
+#define IN_WHILE (((AnalysisData*)visitor->data)->in_while)
 
 /**
  * @brief Wrapper for @ref lookup_symbol that reports an error if the symbol isn't found
@@ -94,10 +119,10 @@ Symbol* lookup_symbol_with_reporting(NodeVisitor* visitor, ASTNode* node, const 
  */
 void AnalysisVisitor_check_vardecl (NodeVisitor* visitor, ASTNode* node) 
 {
-    // set attribute for this node
     SET_INFERRED_TYPE(node->vardecl.type);
 
-    if (node -> vardecl.type == VOID ) 
+    // make sure that the type of the variable declaration is not void
+    if (node->vardecl.type == VOID ) 
     {
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
     }
@@ -109,6 +134,8 @@ void AnalysisVisitor_check_vardecl (NodeVisitor* visitor, ASTNode* node)
  */
 void AnalysisVisitor_infer_funcdecl (NodeVisitor* visitor, ASTNode* node) 
 {
+    // set the current function to the name of this function
+    CURR_FUNC = node->funcdecl.name;
     SET_INFERRED_TYPE(node->funcdecl.return_type);
 }
 
@@ -145,6 +172,8 @@ void AnalysisVisitor_infer_conditional (NodeVisitor* visitor, ASTNode* node)
  */
 void AnalysisVisitor_infer_while (NodeVisitor* visitor, ASTNode* node) 
 {
+    // set boolean indicator to true for being in the while loop
+    IN_WHILE = true;
     SET_INFERRED_TYPE(BOOL);
 }
 
@@ -154,7 +183,47 @@ void AnalysisVisitor_infer_while (NodeVisitor* visitor, ASTNode* node)
  */
 void AnalysisVisitor_infer_return (NodeVisitor* visitor, ASTNode* node) 
 {
-    SET_INFERRED_TYPE(node->funcreturn.value);
+    // look up the symbol for the current function to get the expected return value
+    Symbol *func = lookup_symbol(node, CURR_FUNC);
+    SET_INFERRED_TYPE(func->type);
+}
+
+/**
+ * @brief set the inferred type for function calls
+ * (Alice added this)
+ */
+void AnalysisVisitor_check_break (NodeVisitor* visitor, ASTNode* node) 
+{
+    // error checking to make sure break statements appear in a while loop
+    if (!IN_WHILE) 
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid break on line %d", node->source_line);
+    }
+}
+
+/**
+ * @brief set the inferred type for function calls
+ * (Alice added this)
+ */
+void AnalysisVisitor_check_continue (NodeVisitor* visitor, ASTNode* node) 
+{
+    // error checking to make sure continue statements appear in a while loop
+    if (!IN_WHILE) 
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid continue on line %d", node->source_line);
+    }
+}
+
+/**
+ * @brief set the inferred type for function calls
+ * (Alice added this)
+ */
+void AnalysisVisitor_infer_funcCall (NodeVisitor* visitor, ASTNode* node) 
+{
+    // look up the symbol for the function to get the expected return type
+    Symbol *func = lookup_symbol(node, node->funccall.name);
+
+    SET_INFERRED_TYPE(func->type);
 }
 
 /**
@@ -203,7 +272,16 @@ void AnalysisVisitor_check_location (NodeVisitor* visitor, ASTNode* node)
 }
 
 /**
- * @brief Check funcdecl for main method (we added this)
+ * @brief post visit the function declaration to set current function to null to indicate that 
+ * we are no longer in a function
+ */
+void AnalysisVisitor_post_funcdecl (NodeVisitor* visitor, ASTNode* node) 
+{
+    CURR_FUNC = NULL;
+}
+
+/**
+ * @brief Check program for main method
  */
 void AnalysisVisitor_check_main (NodeVisitor* visitor, ASTNode* node) 
 {
@@ -214,7 +292,7 @@ void AnalysisVisitor_check_main (NodeVisitor* visitor, ASTNode* node)
 }
 
 /**
- * @brief check and make sure that assignment type matches declaration type (Alice added this)
+ * @brief check and make sure that assignment type matches declaration type
  */
 void AnalysisVisitor_check_assignment_type (NodeVisitor* visitor, ASTNode* node) 
 {
@@ -227,12 +305,27 @@ void AnalysisVisitor_check_assignment_type (NodeVisitor* visitor, ASTNode* node)
     {
         ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected '%s' to be of type '%s', but was '%s'", node->source_line, loc->location.name, DecafType_to_string(GET_INFERRED_TYPE(loc)), DecafType_to_string(GET_INFERRED_TYPE(val)));
     }
-
 }
 
 /**
- * @brief Check to make sure conditional type is a bool (Alice added this)
- * I think that this method can be condensed
+ * @brief check and make sure that return type matches func declaration
+ */
+void AnalysisVisitor_check_return_type (NodeVisitor* visitor, ASTNode* node) 
+{
+    // post visit check to make sure that the types match
+    if (GET_INFERRED_TYPE(node->funcreturn.value) == VOID)
+    {
+        // do nothing. 
+        // the if below caused integration test D_undefined_var to fail
+    }
+    else if (GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value)) 
+    {
+        ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected method to return type to be '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(GET_INFERRED_TYPE(node->funcreturn.value)));
+    }
+}
+
+/**
+ * @brief Check to make sure conditional type is a bool 
  */
 void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node) {
     // initialize the location and value of the assignment for easier handling
@@ -243,6 +336,13 @@ void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node
     {
         ErrorList_printf(ERROR_LIST, "Invalid condition on line %d. Expected condition to be of type '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(GET_INFERRED_TYPE(val)));
     }
+}
+
+/**
+ * @brief set in_while to false to indicate that we are no longer in a while loop
+ */
+void AnalysisVisitor_post_while (NodeVisitor* visitor, ASTNode* node) {
+    IN_WHILE = false;
 }
 
 
@@ -256,15 +356,22 @@ ErrorList* analyze (ASTNode* tree)
     /* previsit program calls */
     v->previsit_program = &AnalysisVisitor_check_main;
     v->previsit_vardecl = &AnalysisVisitor_check_vardecl;
+    v->previsit_funcdecl = &AnalysisVisitor_infer_funcdecl;
     v->previsit_location = &AnalysisVisitor_infer_location;
     v->previsit_conditional = &AnalysisVisitor_infer_conditional;
+    v->previsit_whileloop = &AnalysisVisitor_infer_while;
+    v->previsit_break = &AnalysisVisitor_check_break;
+    v->previsit_continue = &AnalysisVisitor_check_continue;
+    v->previsit_return = &AnalysisVisitor_infer_return;
+    v->previsit_funccall = &AnalysisVisitor_infer_funcCall;
     v->previsit_literal = &AnalysisVisitor_infer_literal;
 
     /* postvisit program calls */
-    v->postvisit_location = &AnalysisVisitor_check_location;
+    v->postvisit_funcdecl = &AnalysisVisitor_post_funcdecl;
     v->postvisit_assignment = &AnalysisVisitor_check_assignment_type;
     v->postvisit_conditional = &AnalysisVisitor_check_conditional_type;
     v->postvisit_location = &AnalysisVisitor_check_location;
+    v->postvisit_return = &AnalysisVisitor_check_return_type;
 
     /* perform analysis, save error list, clean up, and return errors */
     NodeVisitor_traverse(v, tree);

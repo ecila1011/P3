@@ -1,17 +1,27 @@
 digraph AST {
-4 [shape=box, label="Literal value=1\ntype: int"];
-7 [shape=box, label="Literal value=0\ntype: int"];
-6 [shape=box, label="Return"];
-6 -> 7;
-5 [shape=box, label="Block\nsymbolTable: (empty)"];
-5 -> 6;
-3 [shape=box, label="Conditional\ntype: bool"];
+4 [shape=box, label="Literal value=true\ntype: bool"];
+3 [shape=box, label="Return\ntype: bool"];
 3 -> 4;
-3 -> 5;
 2 [shape=box, label="Block\nsymbolTable: (empty)"];
 2 -> 3;
-1 [shape=box, label="FuncDecl name='main'\nsymbolTable: (empty)"];
+1 [shape=box, label="FuncDecl name='yeah'\ntype: bool\nsymbolTable: (empty)"];
 1 -> 2;
-0 [shape=box, label="Program\nsymbolTable: \n  print_int : (int) -> void\n  print_bool : (bool) -> void\n  print_str : (str) -> void\n  main : () -> int"];
+7 [shape=box, label="VarDecl name='i'\ntype: int"];
+9 [shape=box, label="Location name='i'\ntype: int"];
+10 [shape=box, label="FuncCall name='yeah'\ntype: bool"];
+8 [shape=box, label="Assignment"];
+8 -> 9;
+8 -> 10;
+12 [shape=box, label="Literal value=0\ntype: int"];
+11 [shape=box, label="Return\ntype: int"];
+11 -> 12;
+6 [shape=box, label="Block\nsymbolTable: \n  i : int"];
+6 -> 7;
+6 -> 8;
+6 -> 11;
+5 [shape=box, label="FuncDecl name='main'\ntype: int\nsymbolTable: (empty)"];
+5 -> 6;
+0 [shape=box, label="Program\nsymbolTable: \n  print_int : (int) -> void\n  print_bool : (bool) -> void\n  print_str : (str) -> void\n  yeah : () -> bool\n  main : () -> int"];
 0 -> 1;
+0 -> 5;
 }
