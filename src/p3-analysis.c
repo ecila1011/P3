@@ -126,6 +126,12 @@ void AnalysisVisitor_check_vardecl (NodeVisitor* visitor, ASTNode* node)
     {
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
     }
+
+    // check if variable is an array and has valid length
+    if (node->vardecl.is_array && node->vardecl.array_length < 0)
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid array declaration. Array length must be greater than 0 but was %d", node->vardecl.array_length);
+    }
 }
 
 /**
@@ -152,7 +158,8 @@ void AnalysisVisitor_infer_location (NodeVisitor* visitor, ASTNode* node)
     {
         SET_INFERRED_TYPE(VOID);
     }
-    else{
+    else
+    {
         SET_INFERRED_TYPE(loc->type);
     }
 }
@@ -215,6 +222,45 @@ void AnalysisVisitor_check_continue (NodeVisitor* visitor, ASTNode* node)
 }
 
 /**
+ * @brief set the inferred type for binary operations
+ */
+void AnalysisVisitor_pre_binop(NodeVisitor* visitor, ASTNode* node)
+{
+    BinaryOpType op = node->binaryop.operator;
+
+    // check the kind of op and set the inferred type 
+    if (op == OROP || op == ANDOP)
+    {
+        SET_INFERRED_TYPE(BOOL);
+    }
+    else if (op == EQOP || op == NEQOP)
+    {
+        SET_INFERRED_TYPE(BOOL);
+    }
+    else if (op == LTOP || op == LEOP || op == GEOP || op == GTOP)
+    {
+        SET_INFERRED_TYPE(BOOL);
+    }
+    else if (op == ADDOP || op == SUBOP || op == MULOP || op == DIVOP || op == MODOP)
+    {
+        SET_INFERRED_TYPE(INT);
+    }
+}
+
+/**
+ * @brief set the inferred type for unary operations
+ */
+void AnalysisVisitor_pre_unop(NodeVisitor* visitor, ASTNode* node)
+{
+    UnaryOpType op = node->unaryop.operator;
+
+    switch (op) {
+        case NEGOP:     SET_INFERRED_TYPE(INT);
+        case NOTOP:     SET_INFERRED_TYPE(BOOL);
+    }
+}
+
+/**
  * @brief set the inferred type for function calls
  * (Alice added this)
  */
@@ -245,7 +291,16 @@ void AnalysisVisitor_check_location (NodeVisitor* visitor, ASTNode* node)
     // makes sure that the location is valid (has been declared)
     if (node->location.index == NULL) 
     { // if location is not an array
-        lookup_symbol_with_reporting(visitor, node, node->location.name);
+        Symbol* sym1 = lookup_symbol(node, node->location.name);
+
+        if (sym1 == NULL) 
+        {
+            lookup_symbol_with_reporting(visitor, node, node->location.name);
+        }
+        else if (sym1->length > 1) 
+        {
+            ErrorList_printf(ERROR_LIST, "Invalid array access on line %d", node->source_line);
+        }
     }
     else if (node->location.index != NULL)
     { // location is an array
@@ -327,7 +382,8 @@ void AnalysisVisitor_check_return_type (NodeVisitor* visitor, ASTNode* node)
 /**
  * @brief Check to make sure conditional type is a bool 
  */
-void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node) {
+void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node) 
+{
     // initialize the location and value of the assignment for easier handling
     ASTNode* val = node->conditional.condition;
 
@@ -339,9 +395,63 @@ void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node
 }
 
 /**
+ * @brief Postvisit binary op and check types
+ */
+void AnalysisVisitor_post_binop (NodeVisitor* visitor, ASTNode* node) 
+{
+    BinaryOpType op = node->binaryop.operator;
+    
+    DecafType left = GET_INFERRED_TYPE(node->binaryop.left);
+    DecafType right = GET_INFERRED_TYPE(node->binaryop.right);
+
+    if (op == OROP || op == ANDOP)
+    {
+        if (left != BOOL || right != BOOL)
+        {
+            ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected 'bool %s bool' but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
+        }
+    }
+    else if (op == EQOP || op == NEQOP)
+    {
+        if (left != right)
+        {
+            ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected values to be of the same type, but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
+        }
+    }
+    else if (op == LTOP || op == LEOP || op == GEOP || op == GTOP)
+    {
+        if (left != INT || right != INT)
+        {
+            ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected 'int %s int' but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
+        }
+    }
+    else if (op == ADDOP || op == SUBOP || op == MULOP || op == DIVOP || op == MODOP)
+    {
+        if (left != INT || right != INT)
+        {
+            ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected 'int %s int' but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
+        }
+    }
+}
+
+/**
+ * @brief Postvisit binary op and check types
+ */
+void AnalysisVisitor_post_unop (NodeVisitor* visitor, ASTNode* node) 
+{
+    UnaryOpType op = node->unaryop.operator;
+
+    if (GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->unaryop.child)) 
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid unary operation on line %d. Expected '%s%s' but was '%s%s'", node->source_line, UnaryOpToString(op), DecafType_to_string(GET_INFERRED_TYPE(node)), UnaryOpToString(op), DecafType_to_string(GET_INFERRED_TYPE(node->unaryop.child)));
+    }
+}
+
+/**
  * @brief set in_while to false to indicate that we are no longer in a while loop
  */
-void AnalysisVisitor_post_while (NodeVisitor* visitor, ASTNode* node) {
+void AnalysisVisitor_post_while (NodeVisitor* visitor, ASTNode* node) 
+{
     IN_WHILE = false;
 }
 
@@ -362,6 +472,8 @@ ErrorList* analyze (ASTNode* tree)
     v->previsit_whileloop = &AnalysisVisitor_infer_while;
     v->previsit_break = &AnalysisVisitor_check_break;
     v->previsit_continue = &AnalysisVisitor_check_continue;
+    v->previsit_binaryop = &AnalysisVisitor_pre_binop;
+    v->previsit_unaryop = &AnalysisVisitor_pre_unop;
     v->previsit_return = &AnalysisVisitor_infer_return;
     v->previsit_funccall = &AnalysisVisitor_infer_funcCall;
     v->previsit_literal = &AnalysisVisitor_infer_literal;
@@ -372,6 +484,8 @@ ErrorList* analyze (ASTNode* tree)
     v->postvisit_conditional = &AnalysisVisitor_check_conditional_type;
     v->postvisit_location = &AnalysisVisitor_check_location;
     v->postvisit_return = &AnalysisVisitor_check_return_type;
+    v->postvisit_binaryop = &AnalysisVisitor_post_binop;
+    v->postvisit_unaryop = &AnalysisVisitor_post_unop;
 
     /* perform analysis, save error list, clean up, and return errors */
     NodeVisitor_traverse(v, tree);

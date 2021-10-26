@@ -1,10 +1,7 @@
-def bool yeah() {
-    return true;
-}
+int x[3];
 
 def int main() 
 { 
-    int i;
-    i = yeah();
-    return 0;
+    x[2] = x[];
+    return 3 + 4;
 }

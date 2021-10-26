@@ -1,17 +1,28 @@
-==715795== Memcheck, a memory error detector
-==715795== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
-==715795== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
-==715795== Command: ../decaf inputs/add.decaf
-==715795== 
-ERROR: No 'type' attribute
-ERROR: No 'type' attribute
-Type mismatch on line 4. Expected 'a' to be of type 'int', but was '???'
-==715795== 
-==715795== HEAP SUMMARY:
-==715795==     in use at exit: 0 bytes in 0 blocks
-==715795==   total heap usage: 1,792 allocs, 1,792 frees, 209,440 bytes allocated
-==715795== 
-==715795== All heap blocks were freed -- no leaks are possible
-==715795== 
-==715795== For lists of detected and suppressed errors, rerun with: -s
-==715795== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+==1016312== Memcheck, a memory error detector
+==1016312== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==1016312== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
+==1016312== Command: ../decaf inputs/add.decaf
+==1016312== 
+Program [line 1]
+SYM TABLE:
+ print_int : (int) -> void
+ print_bool : (bool) -> void
+ print_str : (str) -> void
+ main : () -> int
+
+  FuncDecl name="main" return_type=int parameters={} [line 1]
+  SYM TABLE:
+
+    Block [line 2]
+    SYM TABLE:
+     a : int
+
+==1016312== 
+==1016312== HEAP SUMMARY:
+==1016312==     in use at exit: 0 bytes in 0 blocks
+==1016312==   total heap usage: 1,793 allocs, 1,793 frees, 209,496 bytes allocated
+==1016312== 
+==1016312== All heap blocks were freed -- no leaks are possible
+==1016312== 
+==1016312== For lists of detected and suppressed errors, rerun with: -s
+==1016312== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
