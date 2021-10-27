@@ -1,1 +1,2 @@
 Symbol 'a' undefined on line 3
+Type mismatch on line 3. Expected method to return type to be 'int', but was 'void'

@@ -117,10 +117,8 @@ Symbol* lookup_symbol_with_reporting(NodeVisitor* visitor, ASTNode* node, const 
 /**
  * @brief Check to make sure that the nodes type is not void and set the inferred type (we added this)
  */
-void AnalysisVisitor_check_vardecl (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_vardecl (NodeVisitor* visitor, ASTNode* node) 
 {
-    SET_INFERRED_TYPE(node->vardecl.type);
-
     // make sure that the type of the variable declaration is not void
     if (node->vardecl.type == VOID ) 
     {
@@ -132,13 +130,15 @@ void AnalysisVisitor_check_vardecl (NodeVisitor* visitor, ASTNode* node)
     {
         ErrorList_printf(ERROR_LIST, "Invalid array declaration. Array length must be greater than 0 but was %d", node->vardecl.array_length);
     }
+
+    // set the inferred type
+    SET_INFERRED_TYPE(node->vardecl.type);
 }
 
 /**
  * @brief set the inferred type (return type) for function declarations.  
- * (Alice added this)
  */
-void AnalysisVisitor_infer_funcdecl (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_funcdecl (NodeVisitor* visitor, ASTNode* node) 
 {
     // set the current function to the name of this function
     CURR_FUNC = node->funcdecl.name;
@@ -147,10 +147,10 @@ void AnalysisVisitor_infer_funcdecl (NodeVisitor* visitor, ASTNode* node)
 
 /**
  * @brief set the inferred type for location (look up symbol)
- * (Alice added this)
  */
-void AnalysisVisitor_infer_location (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_location (NodeVisitor* visitor, ASTNode* node) 
 {
+    // look up the location and then set its type
     Symbol *loc = lookup_symbol(node, node->location.name);
 
     // error check, and then set inferred type
@@ -166,18 +166,16 @@ void AnalysisVisitor_infer_location (NodeVisitor* visitor, ASTNode* node)
 
 /**
  * @brief set the inferred type for conditionals (which should always be bool)
- * (Alice added this)
  */
-void AnalysisVisitor_infer_conditional (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_conditional (NodeVisitor* visitor, ASTNode* node) 
 {
     SET_INFERRED_TYPE(BOOL);
 }
 
 /**
  * @brief set the inferred type for while loop conditions (which should always be bool)
- * (Alice added this)
  */
-void AnalysisVisitor_infer_while (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_while (NodeVisitor* visitor, ASTNode* node) 
 {
     // set boolean indicator to true for being in the while loop
     IN_WHILE = true;
@@ -185,19 +183,25 @@ void AnalysisVisitor_infer_while (NodeVisitor* visitor, ASTNode* node)
 }
 
 /**
- * @brief set the inferred type for return statements
- * (Alice added this)
+ * @brief set the inferred type for return statements 
  */
-void AnalysisVisitor_infer_return (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_return (NodeVisitor* visitor, ASTNode* node) 
 {
     // look up the symbol for the current function to get the expected return value
     Symbol *func = lookup_symbol(node, CURR_FUNC);
-    SET_INFERRED_TYPE(func->type);
+
+    if (func == NULL) 
+    {
+        SET_INFERRED_TYPE(VOID);
+    }
+    else
+    {
+        SET_INFERRED_TYPE(func->type);
+    }
 }
 
 /**
  * @brief set the inferred type for function calls
- * (Alice added this)
  */
 void AnalysisVisitor_check_break (NodeVisitor* visitor, ASTNode* node) 
 {
@@ -210,7 +214,6 @@ void AnalysisVisitor_check_break (NodeVisitor* visitor, ASTNode* node)
 
 /**
  * @brief set the inferred type for function calls
- * (Alice added this)
  */
 void AnalysisVisitor_check_continue (NodeVisitor* visitor, ASTNode* node) 
 {
@@ -262,21 +265,26 @@ void AnalysisVisitor_pre_unop(NodeVisitor* visitor, ASTNode* node)
 
 /**
  * @brief set the inferred type for function calls
- * (Alice added this)
  */
-void AnalysisVisitor_infer_funcCall (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_funcCall (NodeVisitor* visitor, ASTNode* node) 
 {
     // look up the symbol for the function to get the expected return type
     Symbol *func = lookup_symbol(node, node->funccall.name);
 
-    SET_INFERRED_TYPE(func->type);
+    if (func == NULL) 
+    {
+        SET_INFERRED_TYPE(VOID);
+    }
+    else
+    {
+        SET_INFERRED_TYPE(func->type);
+    }
 }
 
 /**
  * @brief set the inferred type for literals
- * (Alice added this)
  */
-void AnalysisVisitor_infer_literal (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_pre_literal (NodeVisitor* visitor, ASTNode* node) 
 {
     SET_INFERRED_TYPE(node->literal.type);
 }
@@ -286,7 +294,7 @@ void AnalysisVisitor_infer_literal (NodeVisitor* visitor, ASTNode* node)
 /**
  * @brief Check to make sure that the location name is valid (we added this)
  */
-void AnalysisVisitor_check_location (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_post_location (NodeVisitor* visitor, ASTNode* node) 
 {
     // makes sure that the location is valid (has been declared)
     if (node->location.index == NULL) 
@@ -349,7 +357,7 @@ void AnalysisVisitor_check_main (NodeVisitor* visitor, ASTNode* node)
 /**
  * @brief check and make sure that assignment type matches declaration type
  */
-void AnalysisVisitor_check_assignment_type (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_post_assignment (NodeVisitor* visitor, ASTNode* node) 
 {
     // initialize the location and value of the assignment for easier handling
     ASTNode* loc = node->assignment.location;
@@ -365,14 +373,18 @@ void AnalysisVisitor_check_assignment_type (NodeVisitor* visitor, ASTNode* node)
 /**
  * @brief check and make sure that return type matches func declaration
  */
-void AnalysisVisitor_check_return_type (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_post_return (NodeVisitor* visitor, ASTNode* node) 
 {
-    // post visit check to make sure that the types match
-    if (GET_INFERRED_TYPE(node->funcreturn.value) == VOID)
+    // if the return value is NULL but the method expects a return value
+    if (GET_INFERRED_TYPE(node) != VOID && node->funcreturn.value == NULL)
+    {
+        ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected method to return type to be '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(VOID));
+    }
+    else if (node->funcreturn.value == NULL)
     {
         // do nothing. 
-        // the if below caused integration test D_undefined_var to fail
-    }
+        // this is to avoid the error of the next if check that wants to get the type of the null pointer
+    } // if the expected return type does not match the actual return type
     else if (GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value)) 
     {
         ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected method to return type to be '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(GET_INFERRED_TYPE(node->funcreturn.value)));
@@ -382,7 +394,7 @@ void AnalysisVisitor_check_return_type (NodeVisitor* visitor, ASTNode* node)
 /**
  * @brief Check to make sure conditional type is a bool 
  */
-void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node) 
+void AnalysisVisitor_post_conditional (NodeVisitor* visitor, ASTNode* node) 
 {
     // initialize the location and value of the assignment for easier handling
     ASTNode* val = node->conditional.condition;
@@ -399,33 +411,35 @@ void AnalysisVisitor_check_conditional_type (NodeVisitor* visitor, ASTNode* node
  */
 void AnalysisVisitor_post_binop (NodeVisitor* visitor, ASTNode* node) 
 {
+    // get the operator
     BinaryOpType op = node->binaryop.operator;
     
+    // store the types of the left and right sides of the operator
     DecafType left = GET_INFERRED_TYPE(node->binaryop.left);
     DecafType right = GET_INFERRED_TYPE(node->binaryop.right);
 
-    if (op == OROP || op == ANDOP)
+    if (op == OROP || op == ANDOP) // AND / OR
     {
         if (left != BOOL || right != BOOL)
         {
             ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected 'bool %s bool' but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
         }
     }
-    else if (op == EQOP || op == NEQOP)
+    else if (op == EQOP || op == NEQOP) // EQUAL / NOT EQUAL
     {
         if (left != right)
         {
             ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected values to be of the same type, but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
         }
     }
-    else if (op == LTOP || op == LEOP || op == GEOP || op == GTOP)
+    else if (op == LTOP || op == LEOP || op == GEOP || op == GTOP) // LESS THAN (OR EQUAL) / GREATER THAN (OR EQUAL)
     {
         if (left != INT || right != INT)
         {
             ErrorList_printf(ERROR_LIST, "Invalid binary operation on line %d. Expected 'int %s int' but was '%s %s %s'", node->source_line, BinaryOpToString(op), DecafType_to_string(left), BinaryOpToString(op), DecafType_to_string(right));
         }
     }
-    else if (op == ADDOP || op == SUBOP || op == MULOP || op == DIVOP || op == MODOP)
+    else if (op == ADDOP || op == SUBOP || op == MULOP || op == DIVOP || op == MODOP) // ADD / SUBTRACT / MULTIPLY / DIVIDE / MOD
     {
         if (left != INT || right != INT)
         {
@@ -441,6 +455,7 @@ void AnalysisVisitor_post_unop (NodeVisitor* visitor, ASTNode* node)
 {
     UnaryOpType op = node->unaryop.operator;
 
+    // if the inferred type of the node does not match the inferred type of the unary child
     if (GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->unaryop.child)) 
     {
         ErrorList_printf(ERROR_LIST, "Invalid unary operation on line %d. Expected '%s%s' but was '%s%s'", node->source_line, UnaryOpToString(op), DecafType_to_string(GET_INFERRED_TYPE(node)), UnaryOpToString(op), DecafType_to_string(GET_INFERRED_TYPE(node->unaryop.child)));
@@ -465,25 +480,25 @@ ErrorList* analyze (ASTNode* tree)
 
     /* previsit program calls */
     v->previsit_program = &AnalysisVisitor_check_main;
-    v->previsit_vardecl = &AnalysisVisitor_check_vardecl;
-    v->previsit_funcdecl = &AnalysisVisitor_infer_funcdecl;
-    v->previsit_location = &AnalysisVisitor_infer_location;
-    v->previsit_conditional = &AnalysisVisitor_infer_conditional;
-    v->previsit_whileloop = &AnalysisVisitor_infer_while;
+    v->previsit_vardecl = &AnalysisVisitor_pre_vardecl;
+    v->previsit_funcdecl = &AnalysisVisitor_pre_funcdecl;
+    v->previsit_location = &AnalysisVisitor_pre_location;
+    v->previsit_conditional = &AnalysisVisitor_pre_conditional;
+    v->previsit_whileloop = &AnalysisVisitor_pre_while;
     v->previsit_break = &AnalysisVisitor_check_break;
     v->previsit_continue = &AnalysisVisitor_check_continue;
     v->previsit_binaryop = &AnalysisVisitor_pre_binop;
     v->previsit_unaryop = &AnalysisVisitor_pre_unop;
-    v->previsit_return = &AnalysisVisitor_infer_return;
-    v->previsit_funccall = &AnalysisVisitor_infer_funcCall;
-    v->previsit_literal = &AnalysisVisitor_infer_literal;
+    v->previsit_return = &AnalysisVisitor_pre_return;
+    v->previsit_funccall = &AnalysisVisitor_pre_funcCall;
+    v->previsit_literal = &AnalysisVisitor_pre_literal;
 
     /* postvisit program calls */
     v->postvisit_funcdecl = &AnalysisVisitor_post_funcdecl;
-    v->postvisit_assignment = &AnalysisVisitor_check_assignment_type;
-    v->postvisit_conditional = &AnalysisVisitor_check_conditional_type;
-    v->postvisit_location = &AnalysisVisitor_check_location;
-    v->postvisit_return = &AnalysisVisitor_check_return_type;
+    v->postvisit_assignment = &AnalysisVisitor_post_assignment;
+    v->postvisit_conditional = &AnalysisVisitor_post_conditional;
+    v->postvisit_location = &AnalysisVisitor_post_location;
+    v->postvisit_return = &AnalysisVisitor_post_return;
     v->postvisit_binaryop = &AnalysisVisitor_post_binop;
     v->postvisit_unaryop = &AnalysisVisitor_post_unop;
 
