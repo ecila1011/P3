@@ -1,0 +1,11 @@
+int a[5];
+int a[12];
+def int main() 
+{
+    int y;
+    int y;
+    x = 3;
+    if (true) {
+        x = 2;
+    }
+}

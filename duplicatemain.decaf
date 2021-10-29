@@ -1,0 +1,15 @@
+def int main() 
+{
+    x = 3;
+    if (true) {
+        x = 2;
+    }
+}
+
+def int main() 
+{
+    x = 3;
+    if (true) {
+        x = 2;
+    }
+}

@@ -1,0 +1,10 @@
+int main;
+
+def int main(int x) 
+{ 
+    main = 3;
+    x = 3;
+    if (true) {
+        x = 2;
+    }
+}

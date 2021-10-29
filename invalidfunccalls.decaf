@@ -1,0 +1,28 @@
+def int main() 
+{
+    bool y;
+    int z;
+    int b;
+    bool c;
+    x = 3;
+    if (true) {
+        x = 2;
+    }
+    y = depressionOne(5);
+    y = depressionTwo(5);
+    z = depressionOne(5);
+    z = depressionTwo(5);
+    b = depressionOne(false);
+    c = depressionOne(false);
+    b = depressionTwo(false);
+    c = depressionTwo(false);
+}
+
+def int depressionOne(int f)
+{
+    return f;
+}
+def bool depressionTwo(bool f)
+{
+    return f;
+}

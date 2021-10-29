@@ -129,7 +129,7 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
 /**
  * @brief Set the current table
  */
-void AnalysisVisitor_pre_program (NodeVisitor *visitor, ASTNode *node)
+void AnalysisVisitor_pre_program(NodeVisitor *visitor, ASTNode *node)
 {
     CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
 }
@@ -137,7 +137,7 @@ void AnalysisVisitor_pre_program (NodeVisitor *visitor, ASTNode *node)
 /**
  * @brief Set the current table
  */
-void AnalysisVisitor_pre_block (NodeVisitor *visitor, ASTNode *node)
+void AnalysisVisitor_pre_block(NodeVisitor *visitor, ASTNode *node)
 {
     CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
 }
@@ -272,7 +272,8 @@ void AnalysisVisitor_pre_binop(NodeVisitor *visitor, ASTNode *node)
     {
         SET_INFERRED_TYPE(INT);
     }
-    else {
+    else
+    {
         SET_INFERRED_TYPE(BOOL);
     }
 }
@@ -324,21 +325,23 @@ void AnalysisVisitor_pre_literal(NodeVisitor *visitor, ASTNode *node)
 /**
  * @brief use the current symbol table defined in the analysis struct to check for duplicate variables
  */
-void check_for_duplicates (NodeVisitor *visitor, ASTNode *node, char *name)
+void check_for_duplicates(NodeVisitor *visitor, ASTNode *node, char *name)
 {
-    // counts the number of times we see the symbol in the table 
+    // counts the number of times we see the symbol in the table
     int dup = 0;
-
     // for each symbol in the local symbols of the current tables, compare to the given symbol name
-    FOR_EACH(Symbol*, sym, CURR_TABLE->local_symbols) {
+    FOR_EACH(Symbol *, sym, CURR_TABLE->local_symbols)
+    {
 
-        if (strncmp(name, sym->name, MAX_ID_LEN) == 0) {
+        if (strncmp(name, sym->name, MAX_ID_LEN) == 0)
+        {
             dup += 1;
         }
     }
 
     // if we saw the symbol more than once, its a duplicate symbol
-    if (dup > 1) {
+    if (dup > 1)
+    {
         ErrorList_printf(ERROR_LIST, "Duplicate symbol '%s' on line %d", name, node->source_line);
     }
 }
@@ -348,9 +351,8 @@ void check_for_duplicates (NodeVisitor *visitor, ASTNode *node, char *name)
  */
 void AnalysisVisitor_post_vardecl(NodeVisitor *visitor, ASTNode *node)
 {
-    check_for_duplicates (visitor, node, node->vardecl.name);
+    check_for_duplicates(visitor, node, node->vardecl.name);
 }
-
 
 /**
  * @brief Check to make sure that the location name is valid (we added this)
@@ -401,7 +403,7 @@ void AnalysisVisitor_post_location(NodeVisitor *visitor, ASTNode *node)
  */
 void AnalysisVisitor_post_funcdecl(NodeVisitor *visitor, ASTNode *node)
 {
-    check_for_duplicates (visitor, node, node->funcdecl.name);
+    check_for_duplicates(visitor, node, node->funcdecl.name);
     CURR_FUNC = NULL;
 }
 
@@ -414,6 +416,16 @@ void AnalysisVisitor_check_main(NodeVisitor *visitor, ASTNode *node)
     if (sym == NULL)
     {
         ErrorList_printf(ERROR_LIST, "Program does not contain a main function");
+    }
+    if (sym != NULL)
+    {
+        // look up the symbol for the function to get the expected return type
+        Symbol *main = lookup_symbol(node, "main");
+
+        if (main->parameters->head != NULL)
+        {
+            ErrorList_printf(ERROR_LIST, "main method should have no parameters", node->source_line);
+        }
     }
 }
 
@@ -448,8 +460,8 @@ void AnalysisVisitor_post_return(NodeVisitor *visitor, ASTNode *node)
         // Do nothing
         // an invalid variable declaration was causing the integration test to fail
 
-    }// if the expected return type does not match the actual return type
-    else if (node-> funcreturn.value != NULL && GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value))
+    } // if the expected return type does not match the actual return type
+    else if (node->funcreturn.value != NULL && GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value))
     {
         ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected method to return type to be '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(GET_INFERRED_TYPE(node->funcreturn.value)));
     }
@@ -586,14 +598,14 @@ ErrorList *analyze(ASTNode *tree)
     /* perform analysis, save error list, clean up, and return errors */
 
     /* adding for null tree test */
-    if (tree == NULL) 
+    if (tree == NULL)
     {
         ErrorList_printf((((AnalysisData *)v->data)->errors), "Null tree");
     }
-    else 
+    else
     {
         NodeVisitor_traverse(v, tree);
-    }   
+    }
 
     ErrorList *errors = ((AnalysisData *)v->data)->errors;
     NodeVisitor_free(v);

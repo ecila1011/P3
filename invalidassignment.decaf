@@ -1,0 +1,19 @@
+int a[5];
+int b;
+bool c;
+void d;
+
+def int main() 
+{ 
+    a[1] = false;
+    a[1] = 2;
+    b = false;
+    b = 4;
+    c = true;
+    c = 3;
+    d = 2;
+    d = false;
+    if (true) {
+        x = 2;
+    }
+}
