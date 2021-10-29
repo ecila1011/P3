@@ -1,16 +1,15 @@
-==4043938== Memcheck, a memory error detector
-==4043938== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
-==4043938== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
-==4043938== Command: ../decaf inputs/undefined_var.decaf
-==4043938== 
+==327690== Memcheck, a memory error detector
+==327690== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==327690== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
+==327690== Command: ../decaf inputs/undefined_var.decaf
+==327690== 
 Symbol 'a' undefined on line 3
-Type mismatch on line 3. Expected method to return type to be 'int', but was 'void'
-==4043938== 
-==4043938== HEAP SUMMARY:
-==4043938==     in use at exit: 0 bytes in 0 blocks
-==4043938==   total heap usage: 1,698 allocs, 1,698 frees, 192,776 bytes allocated
-==4043938== 
-==4043938== All heap blocks were freed -- no leaks are possible
-==4043938== 
-==4043938== For lists of detected and suppressed errors, rerun with: -s
-==4043938== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+==327690== 
+==327690== HEAP SUMMARY:
+==327690==     in use at exit: 0 bytes in 0 blocks
+==327690==   total heap usage: 1,697 allocs, 1,697 frees, 192,520 bytes allocated
+==327690== 
+==327690== All heap blocks were freed -- no leaks are possible
+==327690== 
+==327690== For lists of detected and suppressed errors, rerun with: -s
+==327690== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

@@ -28,6 +28,11 @@ typedef struct AnalysisData
      */
     bool in_while;
 
+    /**
+     * @brief true if we are in a while loop, false otherwise
+     */
+    SymbolTable *curr_table;
+
 } AnalysisData;
 
 /**
@@ -85,6 +90,12 @@ void AnalysisData_free(AnalysisData *data)
 #define IN_WHILE (((AnalysisData *)visitor->data)->in_while)
 
 /**
+ * @brief Macro for more convenient access to the bool for in_while inside a
+ * @ref AnalysisVisitor data structure
+ */
+#define CURR_TABLE (((AnalysisData *)visitor->data)->curr_table)
+
+/**
  * @brief Wrapper for @ref lookup_symbol that reports an error if the symbol isn't found
  * 
  * @param visitor Visitor with the error list for reporting
@@ -114,6 +125,22 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
 #define GET_INFERRED_TYPE(N) (DecafType) ASTNode_get_attribute(N, "type")
 
 /****************************** PRE VISITOR METHODS ******************************/
+
+/**
+ * @brief Set the current table
+ */
+void AnalysisVisitor_pre_program (NodeVisitor *visitor, ASTNode *node)
+{
+    CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
+}
+
+/**
+ * @brief Set the current table
+ */
+void AnalysisVisitor_pre_block (NodeVisitor *visitor, ASTNode *node)
+{
+    CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
+}
 
 /**
  * @brief Check to make sure that the nodes type is not void and set the inferred type (we added this)
@@ -150,6 +177,8 @@ void AnalysisVisitor_pre_funcdecl(NodeVisitor *visitor, ASTNode *node)
     // set the current function to the name of this function
     CURR_FUNC = node->funcdecl.name;
     SET_INFERRED_TYPE(node->funcdecl.return_type);
+
+    CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
 }
 
 /**
@@ -239,21 +268,12 @@ void AnalysisVisitor_pre_binop(NodeVisitor *visitor, ASTNode *node)
     BinaryOpType op = node->binaryop.operator;
 
     // check the kind of op and set the inferred type
-    if (op == OROP || op == ANDOP)
-    {
-        SET_INFERRED_TYPE(BOOL);
-    }
-    else if (op == EQOP || op == NEQOP)
-    {
-        SET_INFERRED_TYPE(BOOL);
-    }
-    else if (op == LTOP || op == LEOP || op == GEOP || op == GTOP)
-    {
-        SET_INFERRED_TYPE(BOOL);
-    }
-    else if (op == ADDOP || op == SUBOP || op == MULOP || op == DIVOP || op == MODOP)
+    if (op == ADDOP || op == SUBOP || op == MULOP || op == DIVOP || op == MODOP)
     {
         SET_INFERRED_TYPE(INT);
+    }
+    else {
+        SET_INFERRED_TYPE(BOOL);
     }
 }
 
@@ -292,20 +312,6 @@ void AnalysisVisitor_pre_funcCall(NodeVisitor *visitor, ASTNode *node)
 }
 
 /**
- * @brief set the inferred type for function calls
- */
-void AnalysisVisitor_post_funcCall(NodeVisitor *visitor, ASTNode *node)
-{
-    // look up the symbol for the function to get the expected return type
-    Symbol *func = lookup_symbol(node, node->funccall.name);
-
-    if (func->parameters->head->type != GET_INFERRED_TYPE(node->funccall.arguments->head))
-    {
-        ErrorList_printf(ERROR_LIST, "Invalid argument type on line %d", node->source_line);
-    }
-}
-
-/**
  * @brief set the inferred type for literals
  */
 void AnalysisVisitor_pre_literal(NodeVisitor *visitor, ASTNode *node)
@@ -314,6 +320,37 @@ void AnalysisVisitor_pre_literal(NodeVisitor *visitor, ASTNode *node)
 }
 
 /****************************** POST VISITOR METHODS ******************************/
+
+/**
+ * @brief use the current symbol table defined in the analysis struct to check for duplicate variables
+ */
+void check_for_duplicates (NodeVisitor *visitor, ASTNode *node, char *name)
+{
+    // counts the number of times we see the symbol in the table 
+    int dup = 0;
+
+    // for each symbol in the local symbols of the current tables, compare to the given symbol name
+    FOR_EACH(Symbol*, sym, CURR_TABLE->local_symbols) {
+
+        if (strncmp(name, sym->name, MAX_ID_LEN) == 0) {
+            dup += 1;
+        }
+    }
+
+    // if we saw the symbol more than once, its a duplicate symbol
+    if (dup > 1) {
+        ErrorList_printf(ERROR_LIST, "Duplicate symbol '%s' on line %d", name, node->source_line);
+    }
+}
+
+/**
+ * @brief Check for duplicate variables
+ */
+void AnalysisVisitor_post_vardecl(NodeVisitor *visitor, ASTNode *node)
+{
+    check_for_duplicates (visitor, node, node->vardecl.name);
+}
+
 
 /**
  * @brief Check to make sure that the location name is valid (we added this)
@@ -360,10 +397,11 @@ void AnalysisVisitor_post_location(NodeVisitor *visitor, ASTNode *node)
 
 /**
  * @brief post visit the function declaration to set current function to null to indicate that 
- * we are no longer in a function
+ * we are no longer in a function. And check for duplicate symbols
  */
 void AnalysisVisitor_post_funcdecl(NodeVisitor *visitor, ASTNode *node)
 {
+    check_for_duplicates (visitor, node, node->funcdecl.name);
     CURR_FUNC = NULL;
 }
 
@@ -405,12 +443,13 @@ void AnalysisVisitor_post_return(NodeVisitor *visitor, ASTNode *node)
     {
         ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected method to return type to be '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(VOID));
     }
-    else if (node->funcreturn.value == NULL)
+    else if (node->funcreturn.value != NULL && GET_INFERRED_TYPE(node->funcreturn.value) == VOID)
     {
-        // do nothing.
-        // this is to avoid the error of the next if check that wants to get the type of the null pointer
-    } // if the expected return type does not match the actual return type
-    else if (GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value))
+        // Do nothing
+        // an invalid variable declaration was causing the integration test to fail
+
+    }// if the expected return type does not match the actual return type
+    else if (node-> funcreturn.value != NULL && GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value))
     {
         ErrorList_printf(ERROR_LIST, "Type mismatch on line %d. Expected method to return type to be '%s', but was '%s'", node->source_line, DecafType_to_string(GET_INFERRED_TYPE(node)), DecafType_to_string(GET_INFERRED_TYPE(node->funcreturn.value)));
     }
@@ -495,6 +534,20 @@ void AnalysisVisitor_post_while(NodeVisitor *visitor, ASTNode *node)
     IN_WHILE = false;
 }
 
+/**
+ * @brief check parameter types for function calls
+ */
+void AnalysisVisitor_post_funcCall(NodeVisitor *visitor, ASTNode *node)
+{
+    // look up the symbol for the function to get the expected return type
+    Symbol *func = lookup_symbol(node, node->funccall.name);
+
+    if (func->parameters->head->type != GET_INFERRED_TYPE(node->funccall.arguments->head))
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid argument type on line %d", node->source_line);
+    }
+}
+
 ErrorList *analyze(ASTNode *tree)
 {
     /* allocate analysis structures */
@@ -503,7 +556,8 @@ ErrorList *analyze(ASTNode *tree)
     v->dtor = (Destructor)AnalysisData_free;
 
     /* previsit program calls */
-    v->previsit_program = &AnalysisVisitor_check_main;
+    v->previsit_program = &AnalysisVisitor_pre_program;
+    v->previsit_block = &AnalysisVisitor_pre_block;
     v->previsit_vardecl = &AnalysisVisitor_pre_vardecl;
     v->previsit_funcdecl = &AnalysisVisitor_pre_funcdecl;
     v->previsit_location = &AnalysisVisitor_pre_location;
@@ -518,8 +572,10 @@ ErrorList *analyze(ASTNode *tree)
     v->previsit_literal = &AnalysisVisitor_pre_literal;
 
     /* postvisit program calls */
+    v->postvisit_program = &AnalysisVisitor_check_main;
+    v->postvisit_vardecl = &AnalysisVisitor_post_vardecl;
     v->postvisit_funcdecl = &AnalysisVisitor_post_funcdecl;
-    v->previsit_funccall = &AnalysisVisitor_post_funcCall;
+    v->postvisit_funccall = &AnalysisVisitor_post_funcCall;
     v->postvisit_assignment = &AnalysisVisitor_post_assignment;
     v->postvisit_conditional = &AnalysisVisitor_post_conditional;
     v->postvisit_location = &AnalysisVisitor_post_location;
@@ -528,7 +584,17 @@ ErrorList *analyze(ASTNode *tree)
     v->postvisit_unaryop = &AnalysisVisitor_post_unop;
 
     /* perform analysis, save error list, clean up, and return errors */
-    NodeVisitor_traverse(v, tree);
+
+    /* adding for null tree test */
+    if (tree == NULL) 
+    {
+        ErrorList_printf((((AnalysisData *)v->data)->errors), "Null tree");
+    }
+    else 
+    {
+        NodeVisitor_traverse(v, tree);
+    }   
+
     ErrorList *errors = ((AnalysisData *)v->data)->errors;
     NodeVisitor_free(v);
     return errors;
