@@ -1,4 +1,15 @@
-def int main(int x) 
+int hey;
+
+def int hey() 
+{ 
+    int x;
+    x = 3;
+    if (true) {
+        x = 2;
+    }
+}
+
+def int main() 
 { 
     int x;
     x = 3;

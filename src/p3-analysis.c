@@ -29,9 +29,14 @@ typedef struct AnalysisData
     bool in_while;
 
     /**
-     * @brief true if we are in a while loop, false otherwise
+     * @brief the current table to do look ups in
      */
     SymbolTable *curr_table;
+
+    /**
+     * @brief the program table
+     */
+    SymbolTable *program_table;    
 
 } AnalysisData;
 
@@ -47,6 +52,8 @@ AnalysisData *AnalysisData_new()
     data->errors = ErrorList_new();
     data->current_func = NULL;
     data->in_while = false;
+    data->curr_table = NULL;
+    data->program_table = NULL;
     return data;
 }
 
@@ -60,6 +67,7 @@ void AnalysisData_free(AnalysisData *data)
     /* free everything in data that is allocated on the heap except the error
      * list; it needs to be returned after the analysis is complete */
     free(data->current_func);
+
 
     /* free "data" itself */
     free(data);
@@ -96,6 +104,12 @@ void AnalysisData_free(AnalysisData *data)
 #define CURR_TABLE (((AnalysisData *)visitor->data)->curr_table)
 
 /**
+ * @brief Macro for more convenient access to the bool for in_while inside a
+ * @ref AnalysisVisitor data structure
+ */
+#define PROGRAM_TABLE (((AnalysisData *)visitor->data)->program_table)
+
+/**
  * @brief Wrapper for @ref lookup_symbol that reports an error if the symbol isn't found
  * 
  * @param visitor Visitor with the error list for reporting
@@ -124,6 +138,32 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
  */
 #define GET_INFERRED_TYPE(N) (DecafType) ASTNode_get_attribute(N, "type")
 
+
+/****************************** HELPER METHODS ******************************/
+/**
+ * @brief use the current symbol table defined in the analysis struct to check for duplicate variables
+ */
+void check_for_duplicates(NodeVisitor *visitor, ASTNode *node, char *name)
+{
+    // counts the number of times we see the symbol in the table
+    int dup = 0;
+    // for each symbol in the local symbols of the current tables, compare to the given symbol name
+    FOR_EACH(Symbol *, sym, CURR_TABLE->local_symbols)
+    {
+
+        if (strncmp(name, sym->name, MAX_ID_LEN) == 0)
+        {
+            dup += 1;
+        }
+    }
+
+    // if we saw the symbol more than once, its a duplicate symbol
+    if (dup > 1)
+    {
+        ErrorList_printf(ERROR_LIST, "Duplicate symbol '%s' on line %d", name, node->source_line);
+    }
+}
+
 /****************************** PRE VISITOR METHODS ******************************/
 
 /**
@@ -132,6 +172,7 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
 void AnalysisVisitor_pre_program(NodeVisitor *visitor, ASTNode *node)
 {
     CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
+    PROGRAM_TABLE = ASTNode_get_attribute(node, "symbolTable");
 }
 
 /**
@@ -177,6 +218,8 @@ void AnalysisVisitor_pre_funcdecl(NodeVisitor *visitor, ASTNode *node)
     // set the current function to the name of this function
     CURR_FUNC = node->funcdecl.name;
     SET_INFERRED_TYPE(node->funcdecl.return_type);
+
+    check_for_duplicates(visitor, node, node->funcdecl.name);
 
     CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
 }
@@ -323,30 +366,6 @@ void AnalysisVisitor_pre_literal(NodeVisitor *visitor, ASTNode *node)
 /****************************** POST VISITOR METHODS ******************************/
 
 /**
- * @brief use the current symbol table defined in the analysis struct to check for duplicate variables
- */
-void check_for_duplicates(NodeVisitor *visitor, ASTNode *node, char *name)
-{
-    // counts the number of times we see the symbol in the table
-    int dup = 0;
-    // for each symbol in the local symbols of the current tables, compare to the given symbol name
-    FOR_EACH(Symbol *, sym, CURR_TABLE->local_symbols)
-    {
-
-        if (strncmp(name, sym->name, MAX_ID_LEN) == 0)
-        {
-            dup += 1;
-        }
-    }
-
-    // if we saw the symbol more than once, its a duplicate symbol
-    if (dup > 1)
-    {
-        ErrorList_printf(ERROR_LIST, "Duplicate symbol '%s' on line %d", name, node->source_line);
-    }
-}
-
-/**
  * @brief Check for duplicate variables
  */
 void AnalysisVisitor_post_vardecl(NodeVisitor *visitor, ASTNode *node)
@@ -403,8 +422,8 @@ void AnalysisVisitor_post_location(NodeVisitor *visitor, ASTNode *node)
  */
 void AnalysisVisitor_post_funcdecl(NodeVisitor *visitor, ASTNode *node)
 {
-    check_for_duplicates(visitor, node, node->funcdecl.name);
     CURR_FUNC = NULL;
+    CURR_TABLE = PROGRAM_TABLE;
 }
 
 /**
@@ -424,7 +443,7 @@ void AnalysisVisitor_check_main(NodeVisitor *visitor, ASTNode *node)
 
         if (main->parameters->head != NULL)
         {
-            ErrorList_printf(ERROR_LIST, "main method should have no parameters", node->source_line);
+            ErrorList_printf(ERROR_LIST, "Main method on line %d should not have any parameters", node->source_line);
         }
     }
 }
