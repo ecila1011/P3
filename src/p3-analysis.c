@@ -125,6 +125,12 @@ void AnalysisVisitor_pre_vardecl (NodeVisitor* visitor, ASTNode* node)
         ErrorList_printf(ERROR_LIST, "Void variable '%s' on line %d", node->vardecl.name, node->source_line);
     }
 
+        // make sure that the name of the variable is not main
+    if (strcmp(node->vardecl.name, "main") == 0 ) 
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid variable name '%s' on line %d", node->vardecl.name, node->source_line);
+    }
+
     // check if variable is an array and has valid length
     if (node->vardecl.is_array && node->vardecl.array_length < 0)
     {
@@ -278,6 +284,20 @@ void AnalysisVisitor_pre_funcCall (NodeVisitor* visitor, ASTNode* node)
     else
     {
         SET_INFERRED_TYPE(func->type);
+    }
+}
+
+/**
+ * @brief set the inferred type for function calls
+ */
+void AnalysisVisitor_post_funcCall (NodeVisitor* visitor, ASTNode* node) 
+{
+    // look up the symbol for the function to get the expected return type
+    Symbol *func = lookup_symbol(node, node->funccall.name);
+
+    if(func->parameters->head->type != GET_INFERRED_TYPE(node->funccall.arguments->head))
+    {
+        ErrorList_printf(ERROR_LIST, "Invalid argument type on line %d", node->source_line);
     }
 }
 
