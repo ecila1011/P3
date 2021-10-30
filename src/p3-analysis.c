@@ -36,7 +36,7 @@ typedef struct AnalysisData
     /**
      * @brief the program table
      */
-    SymbolTable *program_table;    
+    SymbolTable *program_table;
 
 } AnalysisData;
 
@@ -67,7 +67,6 @@ void AnalysisData_free(AnalysisData *data)
     /* free everything in data that is allocated on the heap except the error
      * list; it needs to be returned after the analysis is complete */
     free(data->current_func);
-
 
     /* free "data" itself */
     free(data);
@@ -137,7 +136,6 @@ Symbol *lookup_symbol_with_reporting(NodeVisitor *visitor, ASTNode *node, const 
  * @brief Macro for shorter retrieval of the inferred @c type attribute
  */
 #define GET_INFERRED_TYPE(N) (DecafType) ASTNode_get_attribute(N, "type")
-
 
 /****************************** HELPER METHODS ******************************/
 /**
@@ -219,6 +217,7 @@ void AnalysisVisitor_pre_funcdecl(NodeVisitor *visitor, ASTNode *node)
     CURR_FUNC = node->funcdecl.name;
     SET_INFERRED_TYPE(node->funcdecl.return_type);
 
+    // Check for duplicate function declarations.
     check_for_duplicates(visitor, node, node->funcdecl.name);
 
     CURR_TABLE = ASTNode_get_attribute(node, "symbolTable");
@@ -268,7 +267,7 @@ void AnalysisVisitor_pre_return(NodeVisitor *visitor, ASTNode *node)
 {
     // look up the symbol for the current function to get the expected return value
     Symbol *func = lookup_symbol(node, CURR_FUNC);
-
+    // Set the inferred type
     if (func == NULL)
     {
         SET_INFERRED_TYPE(VOID);
@@ -327,7 +326,7 @@ void AnalysisVisitor_pre_binop(NodeVisitor *visitor, ASTNode *node)
 void AnalysisVisitor_pre_unop(NodeVisitor *visitor, ASTNode *node)
 {
     UnaryOpType op = node->unaryop.operator;
-
+    // Set the unary operation
     switch (op)
     {
     case NEGOP:
@@ -398,11 +397,6 @@ void AnalysisVisitor_post_location(NodeVisitor *visitor, ASTNode *node)
 
         ASTNode *loc = node->location.index;
         int index = loc->literal.integer;
-        //ErrorList_printf(ERROR_LIST, "Index is %d", index);
-        // for some reason this is not working for negative array accesses.
-        // the above error list thing is for deubgging
-        // the first part of the if statement below is just never being run because all negtive array
-        // accesses are registered as a 0 and i dont know why. has to be from somewhere else
 
         // if the index is negative, print to errorlist
         if (index < 0) // this currently never runs because index will always be >= 0
@@ -432,10 +426,12 @@ void AnalysisVisitor_post_funcdecl(NodeVisitor *visitor, ASTNode *node)
 void AnalysisVisitor_check_main(NodeVisitor *visitor, ASTNode *node)
 {
     Symbol *sym = lookup_symbol(node, "main");
+    // Checking if main function exists
     if (sym == NULL)
     {
         ErrorList_printf(ERROR_LIST, "Program does not contain a main function");
     }
+    // Check that there's no parameters in main
     if (sym != NULL)
     {
         // look up the symbol for the function to get the expected return type
@@ -477,7 +473,6 @@ void AnalysisVisitor_post_return(NodeVisitor *visitor, ASTNode *node)
     else if (node->funcreturn.value != NULL && GET_INFERRED_TYPE(node->funcreturn.value) == VOID)
     {
         // Do nothing
-        // an invalid variable declaration was causing the integration test to fail
 
     } // if the expected return type does not match the actual return type
     else if (node->funcreturn.value != NULL && GET_INFERRED_TYPE(node) != GET_INFERRED_TYPE(node->funcreturn.value))
